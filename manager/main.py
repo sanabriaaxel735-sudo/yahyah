@@ -1,7 +1,7 @@
 import discord
 import os
 import asyncio
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -16,15 +16,16 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix='.', intents=intents)
 
+@tasks.loop(minutes=1)
+async def heartbeat():
+    print("Bot is still alive and running (Background Task)...")
+
 @bot.event
 async def on_ready():
     print(f'Manager Bot online: {bot.user.name}')
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=".help | Managing..."))
-    
-    # Heartbeat to keep logs moving
-    while True:
-        print("Bot is still alive and running...")
-        await asyncio.sleep(60)
+    if not heartbeat.is_running():
+        heartbeat.start()
 
 # --- MODERATION COMMANDS ---
 
