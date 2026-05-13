@@ -12,6 +12,7 @@ TOKEN_WELCOMER = os.getenv('WELCOMER_TOKEN')
 TOKEN_PROTECTION = os.getenv('PROTECTION_TOKEN')
 TOKEN_MANAGER = os.getenv('MANAGER_TOKEN')
 TOKEN_BOT4 = os.getenv('BOT4_TOKEN')
+TOKEN_BOT5 = os.getenv('BOT5_TOKEN')
 
 # Common configuration
 INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
@@ -40,8 +41,6 @@ def create_protection():
     intents.message_content = True
     bot = commands.Bot(command_prefix='p!', intents=intents)
 
-    whitelisted_users = []
-
     @bot.event
     async def on_ready():
         print(f"Logged in as Protection: {bot.user}")
@@ -49,7 +48,7 @@ def create_protection():
     @bot.event
     async def on_message(message):
         if message.author.bot: return
-        if re.search(INVITE_REGEX, message.content) and message.author.id not in whitelisted_users:
+        if re.search(INVITE_REGEX, message.content):
             try: await message.delete()
             except: pass
         await bot.process_commands(message)
@@ -95,12 +94,50 @@ def create_placeholder(name="Placeholder"):
     
     return bot
 
+def create_embed_generator():
+    intents = discord.Intents.default()
+    intents.message_content = True
+    bot = commands.Bot(command_prefix='e!', intents=intents)
+
+    @bot.event
+    async def on_ready():
+        print(f"Logged in as Embed Generator: {bot.user}")
+
+    @bot.command()
+    @commands.has_permissions(administrator=True)
+    async def say(ctx, *, message):
+        await ctx.message.delete()
+        await ctx.send(message)
+
+    @bot.command()
+    @commands.has_permissions(administrator=True)
+    async def embed(ctx, *, content):
+        # Format: Title | Description | Color (Hex)
+        await ctx.message.delete()
+        parts = content.split('|')
+        title = parts[0].strip() if len(parts) > 0 else "No Title"
+        desc = parts[1].strip() if len(parts) > 1 else "No Description"
+        
+        # Default color blue
+        color_val = discord.Color.blue()
+        if len(parts) > 2:
+            try:
+                hex_color = int(parts[2].strip().replace('#', ''), 16)
+                color_val = discord.Color(hex_color)
+            except: pass
+
+        embed = discord.Embed(title=title, description=desc, color=color_val)
+        await ctx.send(embed=embed)
+
+    return bot
+
 async def main():
     bots = []
     if TOKEN_WELCOMER: bots.append(create_welcomer().start(TOKEN_WELCOMER))
     if TOKEN_PROTECTION: bots.append(create_protection().start(TOKEN_PROTECTION))
     if TOKEN_MANAGER: bots.append(create_manager().start(TOKEN_MANAGER))
     if TOKEN_BOT4: bots.append(create_placeholder("Bot #4").start(TOKEN_BOT4))
+    if TOKEN_BOT5: bots.append(create_embed_generator().start(TOKEN_BOT5))
     
     if not bots:
         print("ERROR: No tokens found in environment variables!")
