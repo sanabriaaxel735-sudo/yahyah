@@ -202,11 +202,11 @@ def create_youtube_bot():
     async def youtube(ctx):
         try:
             url = f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}"
-            response = requests.get(url, timeout=10)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            response = requests.get(url, headers=headers, timeout=10)
+            
             if response.status_code == 200:
-                # Use regex to find the first title and link in the XML
-                title = re.search(r"<title>(.*?)</title>", response.text, re.DOTALL).group(1)
-                # Skip the channel title, get the first video title
+                # Use regex to find titles and links
                 titles = re.findall(r"<title>(.*?)</title>", response.text)
                 video_title = titles[1] if len(titles) > 1 else "Unknown Title"
                 
@@ -217,7 +217,7 @@ def create_youtube_bot():
                 embed.set_thumbnail(url="https://yt3.googleusercontent.com/ytc/AIdro_n_F_K-Y-K-Y-K-Y-K-Y-K-Y-K-Y-K-Y-K-Y=s176-c-k-c0x00ffffff-no-rj")
                 await ctx.send(embed=embed)
             else:
-                await ctx.send("Failed to fetch YouTube data. Try again later.")
+                await ctx.send(f"Failed to fetch YouTube data. (Status Code: {response.status_code}). Please try again in a few seconds!")
         except Exception as e:
             await ctx.send(f"An error occurred: `{str(e)}`")
 
