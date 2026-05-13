@@ -22,7 +22,10 @@ async def heartbeat():
 
 @bot.event
 async def on_ready():
-    print(f'Manager Bot online: {bot.user.name}')
+    print("---------------------------------------")
+    print("DEBUG: THIS IS THE >>> MANAGER <<< BOT")
+    print(f"Logged in as: {bot.user.name}")
+    print("---------------------------------------")
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=".help | Managing..."))
     if not heartbeat.is_running():
         heartbeat.start()

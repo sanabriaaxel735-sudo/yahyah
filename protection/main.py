@@ -28,7 +28,10 @@ INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
 
 @bot.event
 async def on_ready():
-    print(f'Protection Bot online: {bot.user.name}')
+    print("-----------------------------------------")
+    print("DEBUG: THIS IS THE >>> PROTECTION <<< BOT")
+    print(f"Logged in as: {bot.user.name}")
+    print("-----------------------------------------")
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="for raids..."))
 
 # --- ANTI-LINK ---

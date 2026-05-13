@@ -16,8 +16,10 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name} (ID: {bot.user.id})')
-    print('------')
+    print("---------------------------------------")
+    print("DEBUG: THIS IS THE >>> WELCOMER <<< BOT")
+    print(f"Logged in as: {bot.user.name}")
+    print("---------------------------------------")
     await bot.change_presence(activity=discord.Game(name="Welcoming new members!"))
 
 @bot.event
