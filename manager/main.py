@@ -1,5 +1,6 @@
 import discord
 import os
+import asyncio
 from discord.ext import commands
 from dotenv import load_dotenv
 from datetime import datetime
@@ -19,6 +20,11 @@ bot = commands.Bot(command_prefix='.', intents=intents)
 async def on_ready():
     print(f'Manager Bot online: {bot.user.name}')
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=".help | Managing..."))
+    
+    # Heartbeat to keep logs moving
+    while True:
+        print("Bot is still alive and running...")
+        await asyncio.sleep(60)
 
 # --- MODERATION COMMANDS ---
 
