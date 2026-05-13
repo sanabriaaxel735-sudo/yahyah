@@ -17,6 +17,7 @@ TOKEN_BOT5 = os.getenv('BOT5_TOKEN')
 TOKEN_BOT6 = os.getenv('BOT6_TOKEN')
 TOKEN_BOT7 = os.getenv('BOT7_TOKEN')
 TOKEN_BOT8 = os.getenv('BOT8_TOKEN')
+TOKEN_BOT9 = os.getenv('BOT9_TOKEN')
 
 # Common configuration
 INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
@@ -233,6 +234,7 @@ async def main():
     if TOKEN_BOT6: bots.append(create_placeholder("Bot #6").start(TOKEN_BOT6))
     if TOKEN_BOT7: bots.append(create_email_bot().start(TOKEN_BOT7))
     if TOKEN_BOT8: bots.append(create_youtube_bot().start(TOKEN_BOT8))
+    if TOKEN_BOT9: bots.append(create_placeholder("Bot #9").start(TOKEN_BOT9))
     
     if not bots:
         print("ERROR: No tokens found in environment variables!")
