@@ -11,6 +11,7 @@ load_dotenv()
 TOKEN_WELCOMER = os.getenv('WELCOMER_TOKEN')
 TOKEN_PROTECTION = os.getenv('PROTECTION_TOKEN')
 TOKEN_MANAGER = os.getenv('MANAGER_TOKEN')
+TOKEN_BOT4 = os.getenv('BOT4_TOKEN')
 
 # Common configuration
 INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
@@ -56,7 +57,7 @@ def create_protection():
     @bot.event
     async def on_member_join(member):
         if member.bot:
-            # Temporarily disabled so Manager can join!
+            # Kicking is temporarily disabled to allow new bots to join safely!
             print(f"Bot joined: {member.name}. Kicking is currently OFF.")
             return
 
@@ -82,10 +83,16 @@ def create_manager():
     async def purge(ctx, amount: int):
         await ctx.channel.purge(limit=amount + 1)
 
-    @bot.command()
-    async def ping(ctx):
-        await ctx.send(f"Pong! {round(bot.latency * 1000)}ms")
+    return bot
 
+def create_placeholder(name="Placeholder"):
+    intents = discord.Intents.default()
+    bot = commands.Bot(command_prefix='!', intents=intents)
+
+    @bot.event
+    async def on_ready():
+        print(f"Logged in as {name}: {bot.user}")
+    
     return bot
 
 async def main():
@@ -93,6 +100,7 @@ async def main():
     if TOKEN_WELCOMER: bots.append(create_welcomer().start(TOKEN_WELCOMER))
     if TOKEN_PROTECTION: bots.append(create_protection().start(TOKEN_PROTECTION))
     if TOKEN_MANAGER: bots.append(create_manager().start(TOKEN_MANAGER))
+    if TOKEN_BOT4: bots.append(create_placeholder("Bot #4").start(TOKEN_BOT4))
     
     if not bots:
         print("ERROR: No tokens found in environment variables!")
