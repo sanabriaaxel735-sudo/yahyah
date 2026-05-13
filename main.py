@@ -56,11 +56,9 @@ def create_protection():
     @bot.event
     async def on_member_join(member):
         if member.bot:
-            # Don't kick our own bots! 
-            if "av0id/kxrried" in member.name:
-                return
-            try: await member.kick(reason="Anti-Bot Protection")
-            except: pass
+            # Temporarily disabled so Manager can join!
+            print(f"Bot joined: {member.name}. Kicking is currently OFF.")
+            return
 
     return bot
 
