@@ -2,6 +2,7 @@ import discord
 import os
 import asyncio
 import re
+import requests
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -14,6 +15,7 @@ TOKEN_MANAGER = os.getenv('MANAGER_TOKEN')
 TOKEN_BOT4 = os.getenv('BOT4_TOKEN')
 TOKEN_BOT5 = os.getenv('BOT5_TOKEN')
 TOKEN_BOT6 = os.getenv('BOT6_TOKEN')
+TOKEN_BOT7 = os.getenv('BOT7_TOKEN')
 
 # Common configuration
 INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
@@ -57,7 +59,6 @@ def create_protection():
     @bot.event
     async def on_member_join(member):
         if member.bot:
-            # Kicking is temporarily disabled to allow new bots to join safely!
             print(f"Bot joined: {member.name}. Kicking is currently OFF.")
             return
 
@@ -106,12 +107,6 @@ def create_embed_generator():
 
     @bot.command()
     @commands.has_permissions(administrator=True)
-    async def say(ctx, *, message):
-        await ctx.message.delete()
-        await ctx.send(message)
-
-    @bot.command()
-    @commands.has_permissions(administrator=True)
     async def embed(ctx, *, content):
         await ctx.message.delete()
         parts = content.split('|')
@@ -128,6 +123,65 @@ def create_embed_generator():
 
     return bot
 
+def create_email_bot():
+    intents = discord.Intents.default()
+    intents.message_content = True
+    bot = commands.Bot(command_prefix='g!', intents=intents)
+
+    user_emails = {} # Store user's active email
+
+    @bot.event
+    async def on_ready():
+        print(f"Logged in as Email Bot: {bot.user}")
+
+    @bot.command()
+    async def gen(ctx):
+        response = requests.get("https://www.1secmail.com/api/v1/?action=genEmailAddresses&count=1")
+        if response.status_code == 200:
+            email = response.json()[0]
+            user_emails[ctx.author.id] = email
+            embed = discord.Embed(title="Temp Email Generated", description=f"**Email:** `{email}`\n\nUse `g!inbox` to check for messages!", color=discord.Color.green())
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send("Failed to generate email. Try again.")
+
+    @bot.command()
+    async def inbox(ctx):
+        email = user_emails.get(ctx.author.id)
+        if not email:
+            await ctx.send("You haven't generated an email yet! Use `g!gen` first.")
+            return
+
+        login, domain = email.split('@')
+        response = requests.get(f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}")
+        
+        if response.status_code == 200:
+            messages = response.json()
+            if not messages:
+                await ctx.send("📥 Your inbox is currently empty.")
+                return
+
+            embed = discord.Embed(title=f"Inbox for {email}", color=discord.Color.gold())
+            for msg in messages[:5]: # Show last 5 messages
+                msg_id = msg['id']
+                # Get full message content
+                detail = requests.get(f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={msg_id}").json()
+                subject = detail.get('subject', 'No Subject')
+                body = detail.get('textBody', 'No Content')
+                sender = detail.get('from', 'Unknown')
+                
+                # Look for links in body
+                links = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', body)
+                link_text = f"\n**Links Found:** {links[0]}" if links else ""
+                
+                embed.add_field(name=f"From: {sender}", value=f"**Sub:** {subject}\n**Preview:** {body[:100]}...{link_text}", inline=False)
+            
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send("Failed to fetch inbox. Try again.")
+
+    return bot
+
 async def main():
     bots = []
     if TOKEN_WELCOMER: bots.append(create_welcomer().start(TOKEN_WELCOMER))
@@ -136,6 +190,7 @@ async def main():
     if TOKEN_BOT4: bots.append(create_placeholder("Bot #4").start(TOKEN_BOT4))
     if TOKEN_BOT5: bots.append(create_embed_generator().start(TOKEN_BOT5))
     if TOKEN_BOT6: bots.append(create_placeholder("Bot #6").start(TOKEN_BOT6))
+    if TOKEN_BOT7: bots.append(create_email_bot().start(TOKEN_BOT7))
     
     if not bots:
         print("ERROR: No tokens found in environment variables!")
