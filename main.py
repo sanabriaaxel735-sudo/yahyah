@@ -16,6 +16,7 @@ TOKEN_BOT4 = os.getenv('BOT4_TOKEN')
 TOKEN_BOT5 = os.getenv('BOT5_TOKEN')
 TOKEN_BOT6 = os.getenv('BOT6_TOKEN')
 TOKEN_BOT7 = os.getenv('BOT7_TOKEN')
+TOKEN_BOT8 = os.getenv('BOT8_TOKEN')
 
 # Common configuration
 INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
@@ -107,6 +108,12 @@ def create_embed_generator():
 
     @bot.command()
     @commands.has_permissions(administrator=True)
+    async def say(ctx, *, message):
+        await ctx.message.delete()
+        await ctx.send(message)
+
+    @bot.command()
+    @commands.has_permissions(administrator=True)
     async def embed(ctx, *, content):
         await ctx.message.delete()
         parts = content.split('|')
@@ -165,23 +172,54 @@ def create_email_bot():
                 return
 
             embed = discord.Embed(title=f"Inbox for {email}", color=discord.Color.gold())
-            for msg in messages[:5]: # Show last 5 messages
+            for msg in messages[:5]:
                 msg_id = msg['id']
-                # Get full message content
                 detail = requests.get(f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={msg_id}").json()
                 subject = detail.get('subject', 'No Subject')
                 body = detail.get('textBody', 'No Content')
                 sender = detail.get('from', 'Unknown')
-                
-                # Look for links in body
                 links = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', body)
                 link_text = f"\n**Links Found:** {links[0]}" if links else ""
-                
                 embed.add_field(name=f"From: {sender}", value=f"**Sub:** {subject}\n**Preview:** {body[:100]}...{link_text}", inline=False)
-            
             await ctx.send(embed=embed)
         else:
             await ctx.send("Failed to fetch inbox. Try again.")
+
+    return bot
+
+def create_youtube_bot():
+    intents = discord.Intents.default()
+    intents.message_content = True
+    bot = commands.Bot(command_prefix='?', intents=intents)
+
+    CHANNEL_ID = "UCq5z8947p69s-7T_Z8d65sA" # Jynxzi Channel ID
+
+    @bot.event
+    async def on_ready():
+        print(f"Logged in as YouTube Bot: {bot.user}")
+
+    @bot.command()
+    async def youtube(ctx):
+        try:
+            url = f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}"
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                # Use regex to find the first title and link in the XML
+                title = re.search(r"<title>(.*?)</title>", response.text, re.DOTALL).group(1)
+                # Skip the channel title, get the first video title
+                titles = re.findall(r"<title>(.*?)</title>", response.text)
+                video_title = titles[1] if len(titles) > 1 else "Unknown Title"
+                
+                links = re.findall(r'<link rel="alternate" href="(.*?)"', response.text)
+                video_link = links[0] if links else "https://www.youtube.com/@Jynxzi"
+                
+                embed = discord.Embed(title="Latest Jynxzi Video! 🎥", description=f"**{video_title}**\n\n[Watch it here]({video_link})", color=discord.Color.red())
+                embed.set_thumbnail(url="https://yt3.googleusercontent.com/ytc/AIdro_n_F_K-Y-K-Y-K-Y-K-Y-K-Y-K-Y-K-Y-K-Y=s176-c-k-c0x00ffffff-no-rj")
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send("Failed to fetch YouTube data. Try again later.")
+        except Exception as e:
+            await ctx.send(f"An error occurred: `{str(e)}`")
 
     return bot
 
@@ -194,6 +232,7 @@ async def main():
     if TOKEN_BOT5: bots.append(create_embed_generator().start(TOKEN_BOT5))
     if TOKEN_BOT6: bots.append(create_placeholder("Bot #6").start(TOKEN_BOT6))
     if TOKEN_BOT7: bots.append(create_email_bot().start(TOKEN_BOT7))
+    if TOKEN_BOT8: bots.append(create_youtube_bot().start(TOKEN_BOT8))
     
     if not bots:
         print("ERROR: No tokens found in environment variables!")
