@@ -13,6 +13,7 @@ TOKEN_PROTECTION = os.getenv('PROTECTION_TOKEN')
 TOKEN_MANAGER = os.getenv('MANAGER_TOKEN')
 TOKEN_BOT4 = os.getenv('BOT4_TOKEN')
 TOKEN_BOT5 = os.getenv('BOT5_TOKEN')
+TOKEN_BOT6 = os.getenv('BOT6_TOKEN')
 
 # Common configuration
 INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
@@ -112,20 +113,16 @@ def create_embed_generator():
     @bot.command()
     @commands.has_permissions(administrator=True)
     async def embed(ctx, *, content):
-        # Format: Title | Description | Color (Hex)
         await ctx.message.delete()
         parts = content.split('|')
         title = parts[0].strip() if len(parts) > 0 else "No Title"
         desc = parts[1].strip() if len(parts) > 1 else "No Description"
-        
-        # Default color blue
         color_val = discord.Color.blue()
         if len(parts) > 2:
             try:
                 hex_color = int(parts[2].strip().replace('#', ''), 16)
                 color_val = discord.Color(hex_color)
             except: pass
-
         embed = discord.Embed(title=title, description=desc, color=color_val)
         await ctx.send(embed=embed)
 
@@ -138,6 +135,7 @@ async def main():
     if TOKEN_MANAGER: bots.append(create_manager().start(TOKEN_MANAGER))
     if TOKEN_BOT4: bots.append(create_placeholder("Bot #4").start(TOKEN_BOT4))
     if TOKEN_BOT5: bots.append(create_embed_generator().start(TOKEN_BOT5))
+    if TOKEN_BOT6: bots.append(create_placeholder("Bot #6").start(TOKEN_BOT6))
     
     if not bots:
         print("ERROR: No tokens found in environment variables!")
