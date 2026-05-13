@@ -136,14 +136,17 @@ def create_email_bot():
 
     @bot.command()
     async def gen(ctx):
-        response = requests.get("https://www.1secmail.com/api/v1/?action=genEmailAddresses&count=1")
-        if response.status_code == 200:
-            email = response.json()[0]
-            user_emails[ctx.author.id] = email
-            embed = discord.Embed(title="Temp Email Generated", description=f"**Email:** `{email}`\n\nUse `g!inbox` to check for messages!", color=discord.Color.green())
-            await ctx.send(embed=embed)
-        else:
-            await ctx.send("Failed to generate email. Try again.")
+        try:
+            response = requests.get("https://www.1secmail.com/api/v1/?action=genEmailAddresses&count=1", timeout=10)
+            if response.status_code == 200:
+                email = response.json()[0]
+                user_emails[ctx.author.id] = email
+                embed = discord.Embed(title="Temp Email Generated", description=f"**Email:** `{email}`\n\nUse `g!inbox` to check for messages!", color=discord.Color.green())
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send(f"Failed to generate email. (Error Code: {response.status_code}). Try again in a second!")
+        except Exception as e:
+            await ctx.send(f"An error occurred: `{str(e)}`")
 
     @bot.command()
     async def inbox(ctx):
