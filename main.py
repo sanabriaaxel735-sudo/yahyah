@@ -82,12 +82,41 @@ def create_manager():
         if not heartbeat.is_running(): heartbeat.start()
     return bot
 
+import booster_standalone.intelligence as intelligence
+
 def create_booster_bot():
     intents = discord.Intents.default()
     intents.message_content = True
+    intents.members = True
     bot = commands.Bot(command_prefix='b!', intents=intents)
+    
     @bot.event
-    async def on_ready(): print(f"Logged in as Booster Bot: {bot.user}")
+    async def on_ready(): 
+        print(f"Logged in as Booster Bot (Nova GPT): {bot.user}")
+        # Start key refresh loop
+        if not auto_refresh_keys.is_running():
+            auto_refresh_keys.start()
+
+    @tasks.loop(hours=6)
+    async def auto_refresh_keys():
+        print("Elite System: Refreshing free AI keys...")
+        import booster_standalone.fetch_free_keys as fetch_free_keys
+        fetch_free_keys.fetch_keys()
+        intelligence.engine.load_free_keys()
+
+    @bot.event
+    async def on_message(message):
+        if message.author.bot: return
+        if isinstance(message.channel, discord.DMChannel):
+            async with message.channel.typing():
+                response = await intelligence.engine.get_response(message.content, message.author.id)
+                if len(response) > 2000:
+                    for i in range(0, len(response), 2000):
+                        await message.channel.send(response[i:i+2000])
+                else:
+                    await message.channel.send(response)
+        await bot.process_commands(message)
+
     @bot.command()
     async def boost(ctx, invite_link: str):
         if not os.path.exists("tokens.txt"):
