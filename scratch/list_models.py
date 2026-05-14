@@ -3,10 +3,10 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_KEY_2")
 
 if not GEMINI_API_KEY:
-    print("ERROR: GEMINI_API_KEY missing!")
+    print("ERROR: GEMINI_KEY_2 missing!")
 else:
     genai.configure(api_key=GEMINI_API_KEY)
     print("Fetching available models...")
