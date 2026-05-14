@@ -93,16 +93,18 @@ def create_booster_bot():
     bot = commands.Bot(command_prefix='b!', intents=intents)
     
     @bot.event
-    async def setup_hook():
-        await bot.tree.sync()
-        print("Elite System: Slash Commands Synced.")
-
-    @bot.event
     async def on_ready(): 
         print(f"Logged in as Booster Bot (Nova GPT): {bot.user}")
         database.db.add_debug_key("NOVA-FREE-BETA")
         if not auto_refresh_keys.is_running():
             auto_refresh_keys.start()
+        
+        # Force Sync Slash Commands
+        try:
+            await bot.tree.sync()
+            print("Elite System: Slash Commands Synced.")
+        except Exception as e:
+            print(f"Sync Error: {e}")
 
     @tasks.loop(hours=6)
     async def auto_refresh_keys():
@@ -165,6 +167,13 @@ def create_booster_bot():
         await interaction.response.send_message("✅ Tokens added successfully!", ephemeral=True)
 
     # --- PREFIX COMMANDS ---
+    @bot.command()
+    @commands.has_permissions(administrator=True)
+    async def sync(ctx):
+        await ctx.send("🔄 Syncing slash commands...")
+        await bot.tree.sync()
+        await ctx.send("✅ Slash commands synced!")
+
     @bot.command()
     async def boost(ctx, invite_link: str):
         # (Existing boost logic)
