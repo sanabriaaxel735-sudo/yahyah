@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity | Discord Booster Control</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-glow"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="gradient-text">ANTIGRAVITY</span>
+                <span class="version">v1.0</span>
+            </div>
+            <h1>Booster <span class="dim">Command Center</span></h1>
+        </header>
+
+        <main>
+            <section class="control-panel glass">
+                <div class="input-group">
+                    <label for="invite">Server Invite Link</label>
+                    <input type="text" id="invite" placeholder="https://discord.gg/your-server" class="glass-input">
+                </div>
+
+                <div class="input-group">
+                    <label for="tokens">Discord Tokens <span class="count" id="token-count">0</span></label>
+                    <textarea id="tokens" placeholder="Paste tokens here (one per line)..." class="glass-input"></textarea>
+                </div>
+
+                <button id="boost-btn" class="primary-btn">
+                    <span class="btn-text">INITIALIZE BOOST</span>
+                    <div class="loader"></div>
+                </button>
+            </section>
+
+            <section class="stats-panel glass">
+                <div class="stat-card">
+                    <span class="stat-label">Active Tokens</span>
+                    <span class="stat-value" id="active-tokens">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Success Rate</span>
+                    <span class="stat-value" id="success-rate">0%</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Total Boosts</span>
+                    <span class="stat-value" id="total-boosts">0</span>
+                </div>
+            </section>
+
+            <section class="log-panel glass">
+                <div class="log-header">
+                    <h3>Operation Logs</h3>
+                    <button id="clear-logs" class="text-btn">Clear</button>
+                </div>
+                <div id="logs" class="log-content">
+                    <div class="log-entry system">System initialized. Awaiting commands...</div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 Antigravity AI | Designed for Performance</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
