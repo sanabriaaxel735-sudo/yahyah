@@ -6,6 +6,7 @@ import requests
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import booster_logic
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +19,7 @@ TOKEN_BOT6 = os.getenv('BOT6_TOKEN')
 TOKEN_BOT7 = os.getenv('BOT7_TOKEN')
 TOKEN_BOT8 = os.getenv('BOT8_TOKEN')
 TOKEN_BOT9 = os.getenv('BOT9_TOKEN')
+TOKEN_BOOSTER = os.getenv('BOOSTER_TOKEN')
 
 # Common configuration
 INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
@@ -224,6 +226,56 @@ def create_youtube_bot():
 
     return bot
 
+def create_booster_bot():
+    intents = discord.Intents.default()
+    intents.message_content = True
+    bot = commands.Bot(command_prefix='b!', intents=intents)
+
+    @bot.event
+    async def on_ready():
+        print(f"Logged in as Booster Bot: {bot.user}")
+
+    @bot.command()
+    async def boost(ctx, invite_link: str):
+        if not os.path.exists("tokens.txt"):
+            await ctx.send("❌ `tokens.txt` not found!")
+            return
+
+        with open("tokens.txt", "r") as f:
+            tokens = [line.strip() for line in f if line.strip()]
+
+        if not tokens:
+            await ctx.send("❌ No tokens found in `tokens.txt`!")
+            return
+
+        status_msg = await ctx.send(f"🚀 Starting boost process with {len(tokens)} tokens...")
+        
+        results = []
+        for token in tokens:
+            res = await booster_logic.boost_with_token(token, invite_link)
+            results.append(res)
+            
+            # Update status message occasionally
+            if len(results) % 5 == 0:
+                await status_msg.edit(content=f"🚀 Progress: {len(results)}/{len(tokens)} tokens processed...")
+
+        success_count = sum(1 for r in results if r['success'])
+        fail_count = len(results) - success_count
+        
+        embed = discord.Embed(title="Boost Process Completed", color=discord.Color.gold())
+        embed.add_field(name="Total Tokens", value=str(len(tokens)), inline=True)
+        embed.add_field(name="Success", value=str(success_count), inline=True)
+        embed.add_field(name="Failed", value=str(fail_count), inline=True)
+        
+        if fail_count > 0:
+            errors = "\n".join([r['message'] for r in results if not r['success']][:10])
+            if len(results) > 10: errors += "\n..."
+            embed.add_field(name="Errors (Last 10)", value=f"```\n{errors}\n```", inline=False)
+
+        await ctx.send(embed=embed)
+
+    return bot
+
 async def main():
     bots = []
     if TOKEN_WELCOMER: bots.append(create_welcomer().start(TOKEN_WELCOMER))
@@ -235,6 +287,7 @@ async def main():
     if TOKEN_BOT7: bots.append(create_email_bot().start(TOKEN_BOT7))
     if TOKEN_BOT8: bots.append(create_youtube_bot().start(TOKEN_BOT8))
     if TOKEN_BOT9: bots.append(create_placeholder("Bot #9").start(TOKEN_BOT9))
+    if TOKEN_BOOSTER: bots.append(create_booster_bot().start(TOKEN_BOOSTER))
     
     if not bots:
         print("ERROR: No tokens found in environment variables!")

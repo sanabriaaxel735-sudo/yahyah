@@ -7,3 +7,5 @@ venv/
 .venv/
 .gitignore_old
 **/ .env
+tokens.txt
+*.db
