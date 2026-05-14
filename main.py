@@ -83,6 +83,8 @@ def create_manager():
     return bot
 
 import booster_standalone.intelligence as intelligence
+import booster_standalone.database as database
+from discord import app_commands
 
 def create_booster_bot():
     intents = discord.Intents.default()
@@ -91,9 +93,14 @@ def create_booster_bot():
     bot = commands.Bot(command_prefix='b!', intents=intents)
     
     @bot.event
+    async def setup_hook():
+        await bot.tree.sync()
+        print("Elite System: Slash Commands Synced.")
+
+    @bot.event
     async def on_ready(): 
         print(f"Logged in as Booster Bot (Nova GPT): {bot.user}")
-        # Start key refresh loop
+        database.db.add_debug_key("NOVA-FREE-BETA")
         if not auto_refresh_keys.is_running():
             auto_refresh_keys.start()
 
@@ -117,25 +124,44 @@ def create_booster_bot():
                     await message.channel.send(response)
         await bot.process_commands(message)
 
-    @bot.command()
-    async def boost(ctx, invite_link: str):
+    # --- SLASH COMMANDS ---
+    @bot.tree.command(name="boost", description="Boost a server")
+    async def boost_slash(interaction: discord.Interaction, invite: str, count: int = 1):
+        await interaction.response.send_message(f"🚀 Starting boost for {invite}...", ephemeral=True)
         if not os.path.exists("tokens.txt"):
-            await ctx.send("❌ `tokens.txt` not found!")
+            await interaction.followup.send("❌ `tokens.txt` missing!")
             return
         with open("tokens.txt", "r") as f:
+            tokens = [line.strip() for line in f if line.strip()][:count]
+        results = await booster_logic.multi_boost(tokens, invite)
+        success = sum(1 for r in results if r['success'])
+        await interaction.followup.send(f"✅ Completed! Success: {success}/{len(tokens)}")
+
+    @bot.tree.command(name="redeem", description="Redeem a license key")
+    async def redeem_slash(interaction: discord.Interaction, key: str):
+        await interaction.response.defer(ephemeral=True)
+        res = database.db.redeem_license(key, str(interaction.user.id))
+        if res: await interaction.followup.send("✅ Key Redeemed! Premium features unlocked.")
+        else: await interaction.followup.send("❌ Invalid or expired key.")
+
+    @bot.tree.command(name="status", description="Check AI status")
+    async def status_slash(interaction: discord.Interaction):
+        auth = database.db.is_authorized(str(interaction.user.id))
+        await interaction.response.send_message(f"Nova GPT Status: `{'Authorized' if auth else 'Locked'}`", ephemeral=True)
+
+    # --- PREFIX COMMANDS ---
+    @bot.command()
+    async def boost(ctx, invite_link: str):
+        # (Existing boost logic)
+        with open("tokens.txt", "r") as f:
             tokens = [line.strip() for line in f if line.strip()]
-        if not tokens:
-            await ctx.send("❌ No tokens found!")
-            return
-        status_msg = await ctx.send(f"🚀 Starting boost process with {len(tokens)} tokens...")
         results = []
         for token in tokens:
             res = await booster_logic.boost_with_token(token, invite_link)
             results.append(res)
-            if len(results) % 5 == 0:
-                await status_msg.edit(content=f"🚀 Progress: {len(results)}/{len(tokens)} tokens processed...")
         success_count = sum(1 for r in results if r['success'])
         await ctx.send(f"✅ Boost completed! Success: {success_count}/{len(tokens)}")
+
     return bot
 
 # --- RUNNERS ---
