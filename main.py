@@ -149,6 +149,21 @@ def create_booster_bot():
         auth = database.db.is_authorized(str(interaction.user.id))
         await interaction.response.send_message(f"Nova GPT Status: `{'Authorized' if auth else 'Locked'}`", ephemeral=True)
 
+    @bot.tree.command(name="check-tokens", description="Check how many tokens are loaded")
+    async def check_tokens_slash(interaction: discord.Interaction):
+        if not os.path.exists("tokens.txt"):
+            await interaction.response.send_message("❌ No `tokens.txt` found.", ephemeral=True)
+            return
+        with open("tokens.txt", "r") as f:
+            count = len([line for line in f if line.strip()])
+        await interaction.response.send_message(f"📊 You have **{count}** tokens loaded.", ephemeral=True)
+
+    @bot.tree.command(name="add-tokens", description="Add more tokens to the list")
+    async def add_tokens_slash(interaction: discord.Interaction, tokens: str):
+        with open("tokens.txt", "a") as f:
+            f.write(f"\n{tokens}")
+        await interaction.response.send_message("✅ Tokens added successfully!", ephemeral=True)
+
     # --- PREFIX COMMANDS ---
     @bot.command()
     async def boost(ctx, invite_link: str):
