@@ -7,6 +7,10 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import booster_logic
+import uvicorn
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 # Load environment variables
 load_dotenv()
@@ -24,22 +28,29 @@ TOKEN_BOOSTER = os.getenv('BOOSTER_TOKEN')
 # Common configuration
 INVITE_REGEX = r"(discord\.gg\/|discord\.com\/invite\/)[a-zA-Z0-9]+"
 
+# --- FASTAPI SETUP ---
+app = FastAPI()
+if os.path.exists("dashboard"):
+    app.mount("/static", StaticFiles(directory="dashboard"), name="static")
+
+@app.get("/")
+async def read_index():
+    return FileResponse("dashboard/index.html")
+
+# --- BOT CREATORS ---
+
 def create_welcomer():
     intents = discord.Intents.default()
     intents.members = True
     bot = commands.Bot(command_prefix='w!', intents=intents)
-
     @bot.event
-    async def on_ready():
-        print(f"Logged in as Welcomer: {bot.user}")
-
+    async def on_ready(): print(f"Logged in as Welcomer: {bot.user}")
     @bot.event
     async def on_member_join(member):
         channel = member.guild.system_channel or discord.utils.get(member.guild.text_channels, name="welcome") or member.guild.text_channels[0]
         if channel:
             embed = discord.Embed(title=f"Welcome to {member.guild.name}!", description=f"Hey {member.mention}, welcome!", color=discord.Color.blue())
             await channel.send(content=f"Welcome {member.mention}!", embed=embed)
-    
     return bot
 
 def create_protection():
@@ -47,11 +58,8 @@ def create_protection():
     intents.members = True
     intents.message_content = True
     bot = commands.Bot(command_prefix='p!', intents=intents)
-
     @bot.event
-    async def on_ready():
-        print(f"Logged in as Protection: {bot.user}")
-
+    async def on_ready(): print(f"Logged in as Protection: {bot.user}")
     @bot.event
     async def on_message(message):
         if message.author.bot: return
@@ -59,13 +67,6 @@ def create_protection():
             try: await message.delete()
             except: pass
         await bot.process_commands(message)
-
-    @bot.event
-    async def on_member_join(member):
-        if member.bot:
-            print(f"Bot joined: {member.name}. Kicking is currently OFF.")
-            return
-
     return bot
 
 def create_manager():
@@ -73,228 +74,64 @@ def create_manager():
     intents.members = True
     intents.message_content = True
     bot = commands.Bot(command_prefix='.', intents=intents)
-
     @tasks.loop(minutes=1)
-    async def heartbeat():
-        print("Manager Bot is alive...")
-
+    async def heartbeat(): pass
     @bot.event
     async def on_ready():
         print(f"Logged in as Manager: {bot.user}")
         if not heartbeat.is_running(): heartbeat.start()
-
-    @bot.command()
-    @commands.has_permissions(manage_messages=True)
-    async def purge(ctx, amount: int):
-        await ctx.channel.purge(limit=amount + 1)
-
-    return bot
-
-def create_placeholder(name="Placeholder"):
-    intents = discord.Intents.default()
-    bot = commands.Bot(command_prefix='!', intents=intents)
-
-    @bot.event
-    async def on_ready():
-        print(f"Logged in as {name}: {bot.user}")
-    
-    return bot
-
-def create_embed_generator():
-    intents = discord.Intents.default()
-    intents.message_content = True
-    bot = commands.Bot(command_prefix='e!', intents=intents)
-
-    @bot.event
-    async def on_ready():
-        print(f"Logged in as Embed Generator: {bot.user}")
-
-    @bot.command()
-    @commands.has_permissions(administrator=True)
-    async def say(ctx, *, message):
-        await ctx.message.delete()
-        await ctx.send(message)
-
-    @bot.command()
-    @commands.has_permissions(administrator=True)
-    async def embed(ctx, *, content):
-        await ctx.message.delete()
-        parts = content.split('|')
-        title = parts[0].strip() if len(parts) > 0 else "No Title"
-        desc = parts[1].strip() if len(parts) > 1 else "No Description"
-        color_val = discord.Color.blue()
-        if len(parts) > 2:
-            try:
-                hex_color = int(parts[2].strip().replace('#', ''), 16)
-                color_val = discord.Color(hex_color)
-            except: pass
-        embed = discord.Embed(title=title, description=desc, color=color_val)
-        await ctx.send(embed=embed)
-
-    return bot
-
-def create_email_bot():
-    intents = discord.Intents.default()
-    intents.message_content = True
-    bot = commands.Bot(command_prefix='g!', intents=intents)
-
-    user_emails = {} # Store user's active email
-
-    @bot.event
-    async def on_ready():
-        print(f"Logged in as Email Bot: {bot.user}")
-
-    @bot.command()
-    async def gen(ctx):
-        try:
-            response = requests.get("https://www.1secmail.com/api/v1/?action=genEmailAddresses&count=1", timeout=10)
-            if response.status_code == 200:
-                email = response.json()[0]
-                user_emails[ctx.author.id] = email
-                embed = discord.Embed(title="Temp Email Generated", description=f"**Email:** `{email}`\n\nUse `g!inbox` to check for messages!", color=discord.Color.green())
-                await ctx.send(embed=embed)
-            else:
-                await ctx.send(f"Failed to generate email. (Error Code: {response.status_code}). Try again in a second!")
-        except Exception as e:
-            await ctx.send(f"An error occurred: `{str(e)}`")
-
-    @bot.command()
-    async def inbox(ctx):
-        email = user_emails.get(ctx.author.id)
-        if not email:
-            await ctx.send("You haven't generated an email yet! Use `g!gen` first.")
-            return
-
-        login, domain = email.split('@')
-        response = requests.get(f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}")
-        
-        if response.status_code == 200:
-            messages = response.json()
-            if not messages:
-                await ctx.send("📥 Your inbox is currently empty.")
-                return
-
-            embed = discord.Embed(title=f"Inbox for {email}", color=discord.Color.gold())
-            for msg in messages[:5]:
-                msg_id = msg['id']
-                detail = requests.get(f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={msg_id}").json()
-                subject = detail.get('subject', 'No Subject')
-                body = detail.get('textBody', 'No Content')
-                sender = detail.get('from', 'Unknown')
-                links = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', body)
-                link_text = f"\n**Links Found:** {links[0]}" if links else ""
-                embed.add_field(name=f"From: {sender}", value=f"**Sub:** {subject}\n**Preview:** {body[:100]}...{link_text}", inline=False)
-            await ctx.send(embed=embed)
-        else:
-            await ctx.send("Failed to fetch inbox. Try again.")
-
-    return bot
-
-def create_youtube_bot():
-    intents = discord.Intents.default()
-    intents.message_content = True
-    bot = commands.Bot(command_prefix='?', intents=intents)
-
-    CHANNEL_ID = "UCq5z8947p69s-7T_Z8d65sA" # Jynxzi Channel ID
-
-    @bot.event
-    async def on_ready():
-        print(f"Logged in as YouTube Bot: {bot.user}")
-
-    @bot.command()
-    async def youtube(ctx):
-        try:
-            url = f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}"
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-            response = requests.get(url, headers=headers, timeout=10)
-            
-            if response.status_code == 200:
-                # Use regex to find titles and links
-                titles = re.findall(r"<title>(.*?)</title>", response.text)
-                video_title = titles[1] if len(titles) > 1 else "Unknown Title"
-                
-                links = re.findall(r'<link rel="alternate" href="(.*?)"', response.text)
-                video_link = links[0] if links else "https://www.youtube.com/@Jynxzi"
-                
-                embed = discord.Embed(title="Latest Jynxzi Video! 🎥", description=f"**{video_title}**\n\n[Watch it here]({video_link})", color=discord.Color.red())
-                embed.set_thumbnail(url="https://yt3.googleusercontent.com/ytc/AIdro_n_F_K-Y-K-Y-K-Y-K-Y-K-Y-K-Y-K-Y-K-Y=s176-c-k-c0x00ffffff-no-rj")
-                await ctx.send(embed=embed)
-            else:
-                await ctx.send(f"Failed to fetch YouTube data. (Status Code: {response.status_code}). Please try again in a few seconds!")
-        except Exception as e:
-            await ctx.send(f"An error occurred: `{str(e)}`")
-
     return bot
 
 def create_booster_bot():
     intents = discord.Intents.default()
     intents.message_content = True
     bot = commands.Bot(command_prefix='b!', intents=intents)
-
     @bot.event
-    async def on_ready():
-        print(f"Logged in as Booster Bot: {bot.user}")
-
+    async def on_ready(): print(f"Logged in as Booster Bot: {bot.user}")
     @bot.command()
     async def boost(ctx, invite_link: str):
         if not os.path.exists("tokens.txt"):
             await ctx.send("❌ `tokens.txt` not found!")
             return
-
         with open("tokens.txt", "r") as f:
             tokens = [line.strip() for line in f if line.strip()]
-
         if not tokens:
-            await ctx.send("❌ No tokens found in `tokens.txt`!")
+            await ctx.send("❌ No tokens found!")
             return
-
         status_msg = await ctx.send(f"🚀 Starting boost process with {len(tokens)} tokens...")
-        
         results = []
         for token in tokens:
             res = await booster_logic.boost_with_token(token, invite_link)
             results.append(res)
-            
-            # Update status message occasionally
             if len(results) % 5 == 0:
                 await status_msg.edit(content=f"🚀 Progress: {len(results)}/{len(tokens)} tokens processed...")
-
         success_count = sum(1 for r in results if r['success'])
-        fail_count = len(results) - success_count
-        
-        embed = discord.Embed(title="Boost Process Completed", color=discord.Color.gold())
-        embed.add_field(name="Total Tokens", value=str(len(tokens)), inline=True)
-        embed.add_field(name="Success", value=str(success_count), inline=True)
-        embed.add_field(name="Failed", value=str(fail_count), inline=True)
-        
-        if fail_count > 0:
-            errors = "\n".join([r['message'] for r in results if not r['success']][:10])
-            if len(results) > 10: errors += "\n..."
-            embed.add_field(name="Errors (Last 10)", value=f"```\n{errors}\n```", inline=False)
-
-        await ctx.send(embed=embed)
-
+        await ctx.send(f"✅ Boost completed! Success: {success_count}/{len(tokens)}")
     return bot
 
-async def main():
-    bots = []
-    if TOKEN_WELCOMER: bots.append(create_welcomer().start(TOKEN_WELCOMER))
-    if TOKEN_PROTECTION: bots.append(create_protection().start(TOKEN_PROTECTION))
-    if TOKEN_MANAGER: bots.append(create_manager().start(TOKEN_MANAGER))
-    if TOKEN_BOT4: bots.append(create_placeholder("Bot #4").start(TOKEN_BOT4))
-    if TOKEN_BOT5: bots.append(create_embed_generator().start(TOKEN_BOT5))
-    if TOKEN_BOT6: bots.append(create_placeholder("Bot #6").start(TOKEN_BOT6))
-    if TOKEN_BOT7: bots.append(create_email_bot().start(TOKEN_BOT7))
-    if TOKEN_BOT8: bots.append(create_youtube_bot().start(TOKEN_BOT8))
-    if TOKEN_BOT9: bots.append(create_placeholder("Bot #9").start(TOKEN_BOT9))
-    if TOKEN_BOOSTER: bots.append(create_booster_bot().start(TOKEN_BOOSTER))
-    
-    if not bots:
-        print("ERROR: No tokens found in environment variables!")
-        return
+# --- RUNNERS ---
 
-    print(f"Starting {len(bots)} bots in parallel...")
-    await asyncio.gather(*bots)
+async def run_fastapi():
+    config = uvicorn.Config(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)), log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+async def main():
+    tasks_list = []
+    if TOKEN_WELCOMER: tasks_list.append(create_welcomer().start(TOKEN_WELCOMER))
+    if TOKEN_PROTECTION: tasks_list.append(create_protection().start(TOKEN_PROTECTION))
+    if TOKEN_MANAGER: tasks_list.append(create_manager().start(TOKEN_MANAGER))
+    if TOKEN_BOOSTER: tasks_list.append(create_booster_bot().start(TOKEN_BOOSTER))
+    
+    # Always run FastAPI for the dashboard
+    tasks_list.append(run_fastapi())
+
+    if len(tasks_list) == 1: # Only FastAPI
+        print("ERROR: No bot tokens found!")
+        await run_fastapi()
+    else:
+        print(f"Starting {len(tasks_list)-1} bots and Dashboard...")
+        await asyncio.gather(*tasks_list)
 
 if __name__ == "__main__":
     asyncio.run(main())

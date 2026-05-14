@@ -1,1 +1,1 @@
-web: python booster_deploy.py
+web: python main.py

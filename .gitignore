@@ -1,4 +1,5 @@
 .env
+<<<<<<< HEAD
 **/__pycache__/
 **/*.pyc
 .vscode/
@@ -9,3 +10,10 @@ venv/
 **/ .env
 tokens.txt
 *.db
+=======
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+tokens.txt
+>>>>>>> 1d0c4387cd08e645cbc8edefc9a4e4ce1c4a5080
